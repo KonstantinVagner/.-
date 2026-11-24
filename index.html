@@ -26,7 +26,7 @@
             width: 100vw;
             height: 100vh;
         }
-        /* Верхний HUD как в КРМП */
+        /* Верхний HUD */
         #hud-top {
             position: absolute;
             top: 12px;
@@ -39,7 +39,7 @@
             z-index: 10;
         }
         .server-info {
-            background: rgba(0, 0, 0, 0.65);
+            background: rgba(0, 0, 0, 0.75);
             padding: 6px 12px;
             border-radius: 8px;
             border-left: 4px solid #e63946;
@@ -53,7 +53,7 @@
         .server-title span { color: #e63946; }
         .stats-box {
             text-align: right;
-            background: rgba(0, 0, 0, 0.65);
+            background: rgba(0, 0, 0, 0.75);
             padding: 8px 14px;
             border-radius: 8px;
         }
@@ -69,25 +69,26 @@
             margin-top: 2px;
             letter-spacing: 2px;
         }
+        /* Плашка задания (опущена ниже, чтобы не мешать) */
         #mission-banner {
             position: absolute;
-            top: 75px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(230, 57, 70, 0.9);
-            padding: 6px 16px;
-            border-radius: 20px;
+            top: 78px;
+            left: 15px;
+            right: 15px;
+            background: rgba(230, 57, 70, 0.92);
+            padding: 6px 12px;
+            border-radius: 8px;
             font-size: 13px;
             font-weight: bold;
             pointer-events: none;
             text-align: center;
             box-shadow: 0 4px 10px rgba(0,0,0,0.5);
-            white-space: nowrap;
+            z-index: 10;
         }
-        /* Кнопки меню */
+        /* Кнопки меню (опущены под плашку задания) */
         .menu-btns {
             position: absolute;
-            top: 75px;
+            top: 118px;
             left: 15px;
             display: flex;
             flex-direction: column;
@@ -124,8 +125,8 @@
         .ctrl-btn {
             width: 68px;
             height: 68px;
-            background: rgba(255, 255, 255, 0.15);
-            border: 2px solid rgba(255, 255, 255, 0.4);
+            background: rgba(255, 255, 255, 0.18);
+            border: 2px solid rgba(255, 255, 255, 0.45);
             border-radius: 50%;
             display: flex;
             align-items: center;
@@ -133,10 +134,9 @@
             font-size: 24px;
             font-weight: bold;
             color: white;
-            backdrop-filter: blur(4px);
         }
         .ctrl-btn:active, .ctrl-btn.active {
-            background: rgba(230, 57, 70, 0.7);
+            background: rgba(230, 57, 70, 0.75);
             border-color: #fff;
             transform: scale(0.92);
         }
@@ -153,7 +153,7 @@
         #shop-modal {
             position: absolute;
             inset: 0;
-            background: rgba(15, 15, 20, 0.95);
+            background: rgba(15, 15, 20, 0.96);
             z-index: 30;
             display: none;
             flex-direction: column;
@@ -204,9 +204,10 @@
             right: 25px;
             font-size: 18px;
             font-weight: 900;
-            color: rgba(255,255,255,0.8);
+            color: rgba(255,255,255,0.9);
             text-shadow: 1px 1px 3px #000;
             pointer-events: none;
+            z-index: 10;
         }
     </style>
 </head>
@@ -259,10 +260,24 @@
         const canvas = document.getElementById('game');
         const ctx = canvas.getContext('2d');
 
-        // Игровые данные
-        let money = parseInt(localStorage.getItem('br_money')) || 5000;
-        let currentCarId = parseInt(localStorage.getItem('br_car')) || 0;
-        let ownedCars = JSON.parse(localStorage.getItem('br_owned')) ||;
+        // Безопасная загрузка сохранений (на случай блокировки localStorage в режиме просмотра)
+        function loadStorage(key, fallback) {
+            try {
+                const val = localStorage.getItem(key);
+                return val !== null ? val : fallback;
+            } catch (e) {
+                return fallback;
+            }
+        }
+        function saveStorage(key, val) {
+            try {
+                localStorage.setItem(key, val);
+            } catch (e) {}
+        }
+
+        let money = parseInt(loadStorage('br_money', '5000'));
+        let currentCarId = parseInt(loadStorage('br_car', '0'));
+        let ownedCars = JSON.parse(loadStorage('br_owned', '[0]'));
         let wantedLevel = 0;
 
         const carsCatalog = [
@@ -273,27 +288,19 @@
             { id: 4, name: "Lamborghini Huracan", price: 300000, maxSpeed: 14, accel: 0.55, turn: 0.085, color: "#ffb703" }
         ];
 
-        // Размер карты города
         const WORLD_SIZE = 2400;
         const BLOCK_SIZE = 400;
 
-        // Игрок
         let player = {
             x: 1200,
             y: 1200,
             angle: -Math.PI / 2,
-            speed: 0,
-            width: 24,
-            height: 44
+            speed: 0
         };
 
-        // Управление
         const keys = { left: false, right: false, up: false, down: false };
+        let jobMarker = { x: 1200, y: 800, reward: 2500 };
 
-        // Метка работы
-        let jobMarker = { x: 1400, y: 1000, reward: 2500 };
-
-        // Полиция и пешеходы
         let cops = [];
         let peds = [];
         let skidMarks = [];
@@ -306,14 +313,10 @@
         resize();
 
         function saveProgress() {
-            localStorage.setItem('br_money', money);
-            localStorage.setItem('br_car', currentCarId);
-            localStorage.setItem('br_owned', JSON.stringify(ownedCars));
+            saveStorage('br_money', money);
+            saveStorage('br_car', currentCarId);
+            saveStorage('br_owned', JSON.stringify(ownedCars));
             updateHUD();
         }
 
         function updateHUD() {
-            document.getElementById('money').textContent = money.toLocaleString('ru-RU') + ' ₽';
-            document.getElementById('car-name').textContent = carsCatalog[currentCarId].name;
-            let starsStr = '';
-            for (let i = 0; i < 5; i++) starsStr += i < wantedLevel ? '★' : '☆';
