@@ -2,170 +2,296 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Мини-игра: Змейка</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Змейка Mobile</title>
     <style>
-        body {
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden; /* Отключаем прокрутку страницы */
+            touch-action: none; /* Отключаем системные жесты браузера */
+            background-color: #16213e;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        canvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+        }
+        #ui {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            right: 20px;
             display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: #ffffff;
+            font-size: 20px;
+            font-weight: bold;
+            pointer-events: none;
+            text-shadow: 1px 1px 3px rgba(0,0,0,0.8);
+            z-index: 10;
+        }
+        .score-val {
+            color: #4ecca3;
+        }
+        #game-over {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(22, 33, 62, 0.88);
+            display: none;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            height: 100vh;
-            margin: 0;
-            background-color: #1a1a2e;
             color: #ffffff;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            z-index: 20;
+            text-align: center;
         }
-        h1 {
-            margin-bottom: 10px;
-            font-size: 24px;
+        #game-over h2 {
+            font-size: 32px;
+            margin: 0 0 10px 0;
+            color: #e94560;
         }
-        #score-board {
-            font-size: 20px;
-            margin-bottom: 15px;
-            color: #4ecca3;
+        #game-over p {
+            font-size: 22px;
+            margin: 0 0 25px 0;
         }
-        canvas {
-            border: 3px solid #4ecca3;
-            background-color: #16213e;
-            box-shadow: 0 0 20px rgba(78, 204, 163, 0.2);
+        button {
+            padding: 15px 35px;
+            font-size: 18px;
+            font-weight: bold;
+            background-color: #4ecca3;
+            color: #1a1a2e;
+            border: none;
+            border-radius: 30px;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(78, 204, 163, 0.4);
         }
-        .controls {
-            margin-top: 15px;
+        button:active {
+            transform: scale(0.95);
+        }
+        #hint {
+            position: absolute;
+            bottom: 30px;
+            width: 100%;
+            text-align: center;
+            color: rgba(255, 255, 255, 0.5);
             font-size: 14px;
-            color: #a0a0a0;
+            pointer-events: none;
         }
     </style>
 </head>
 <body>
 
-    <h1>Змейка</h1>
-    <div id="score-board">Счёт: <span id="score">0</span></div>
-    <canvas id="game" width="400" height="400"></canvas>
-    <div class="controls">Управление: стрелки на клавиатуре или W A S D</div>
+    <div id="ui">
+        <div>Счёт: <span id="score" class="score-val">0</span></div>
+        <div>Рекорд: <span id="high-score" class="score-val">0</span></div>
+    </div>
+
+    <div id="hint">Свайпайте в любую сторону для управления</div>
+
+    <div id="game-over">
+        <h2>Игра окончена!</h2>
+        <p>Ваш счёт: <span id="final-score" class="score-val">0</span></p>
+        <button onclick="restartGame()">Играть снова</button>
+    </div>
+
+    <canvas id="game"></canvas>
 
     <script>
         const canvas = document.getElementById('game');
         const ctx = canvas.getContext('2d');
-        const scoreElement = document.getElementById('score');
+        const scoreEl = document.getElementById('score');
+        const highScoreEl = document.getElementById('high-score');
+        const gameOverScreen = document.getElementById('game-over');
+        const finalScoreEl = document.getElementById('final-score');
+        const hintEl = document.getElementById('hint');
 
         const grid = 20;
+        let cols, rows;
         let count = 0;
         let score = 0;
+        let highScore = localStorage.getItem('snakeHighScore') || 0;
+        let isGameOver = false;
+        let canChangeDirection = true; // Защита от быстрого двойного свайпа в себя
+
+        highScoreEl.textContent = highScore;
 
         let snake = {
-            x: 160,
-            y: 160,
+            x: 0,
+            y: 0,
             dx: grid,
             dy: 0,
             cells: [],
             maxCells: 4
         };
 
-        let apple = {
-            x: 320,
-            y: 320
-        };
+        let apple = { x: 0, y: 0 };
 
-        function getRandomInt(min, max) {
-            return Math.floor(Math.random() * (max - min)) + min;
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            cols = Math.floor(canvas.width / grid);
+            rows = Math.floor(canvas.height / grid);
         }
 
-        function resetGame() {
-            alert('Игра окончена! Ваш счёт: ' + score);
-            snake.x = 160;
-            snake.y = 160;
+        function spawnApple() {
+            apple.x = Math.floor(Math.random() * cols) * grid;
+            apple.y = Math.floor(Math.random() * rows) * grid;
+        }
+
+        function initGame() {
+            resizeCanvas();
+            snake.x = Math.floor(cols / 2) * grid;
+            snake.y = Math.floor(rows / 2) * grid;
             snake.cells = [];
             snake.maxCells = 4;
             snake.dx = grid;
             snake.dy = 0;
             score = 0;
-            scoreElement.textContent = score;
-            apple.x = getRandomInt(0, 20) * grid;
-            apple.y = getRandomInt(0, 20) * grid;
+            scoreEl.textContent = score;
+            isGameOver = false;
+            gameOverScreen.style.display = 'none';
+            spawnApple();
+        }
+
+        function restartGame() {
+            initGame();
+            requestAnimationFrame(loop);
+        }
+
+        function setDirection(newDx, newDy) {
+            if (!canChangeDirection || isGameOver) return;
+            // Запрещаем разворот на 180 градусов
+            if (newDx !== 0 && snake.dx === 0) {
+                snake.dx = newDx;
+                snake.dy = 0;
+                canChangeDirection = false;
+                hintEl.style.display = 'none';
+            } else if (newDy !== 0 && snake.dy === 0) {
+                snake.dy = newDy;
+                snake.dx = 0;
+                canChangeDirection = false;
+                hintEl.style.display = 'none';
+            }
         }
 
         function loop() {
+            if (isGameOver) return;
             requestAnimationFrame(loop);
 
-            if (++count < 6) {
-                return;
-            }
+            // Скорость игры (чем меньше цифра, тем быстрее змейка)
+            if (++count < 7) return;
             count = 0;
+            canChangeDirection = true;
+
             ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Рисуем лёгкую сетку на фоне
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.03)';
+            ctx.lineWidth = 1;
+            for (let x = 0; x < canvas.width; x += grid) {
+                ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
+            }
+            for (let y = 0; y < canvas.height; y += grid) {
+                ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
+            }
 
             snake.x += snake.dx;
             snake.y += snake.dy;
 
-            // Проход сквозь стены
-            if (snake.x < 0) {
-                snake.x = canvas.width - grid;
-            } else if (snake.x >= canvas.width) {
-                snake.x = 0;
-            }
+            // Проход сквозь края экрана
+            if (snake.x < 0) snake.x = (cols - 1) * grid;
+            else if (snake.x >= cols * grid) snake.x = 0;
 
-            if (snake.y < 0) {
-                snake.y = canvas.height - grid;
-            } else if (snake.y >= canvas.height) {
-                snake.y = 0;
-            }
+            if (snake.y < 0) snake.y = (rows - 1) * grid;
+            else if (snake.y >= rows * grid) snake.y = 0;
 
             snake.cells.unshift({ x: snake.x, y: snake.y });
-
             if (snake.cells.length > snake.maxCells) {
                 snake.cells.pop();
             }
 
-            // Рисуем яблоко
+            // Рисуем яблоко (круглое)
             ctx.fillStyle = '#e94560';
-            ctx.fillRect(apple.x, apple.y, grid - 1, grid - 1);
+            ctx.beginPath();
+            ctx.arc(apple.x + grid / 2, apple.y + grid / 2, grid / 2 - 2, 0, Math.PI * 2);
+            ctx.fill();
 
             // Рисуем змейку
-            ctx.fillStyle = '#4ecca3';
             snake.cells.forEach(function (cell, index) {
-                ctx.fillRect(cell.x, cell.y, grid - 1, grid - 1);
+                // Голова чуть ярче тела
+                ctx.fillStyle = index === 0 ? '#6effcf' : '#4ecca3';
+                ctx.fillRect(cell.x + 1, cell.y + 1, grid - 2, grid - 2);
 
-                // Если змейка съела яблоко
+                // Поедание яблока
                 if (cell.x === apple.x && cell.y === apple.y) {
                     snake.maxCells++;
                     score += 10;
-                    scoreElement.textContent = score;
-                    apple.x = getRandomInt(0, 20) * grid;
-                    apple.y = getRandomInt(0, 20) * grid;
+                    scoreEl.textContent = score;
+                    if (score > highScore) {
+                        highScore = score;
+                        highScoreEl.textContent = highScore;
+                        localStorage.setItem('snakeHighScore', highScore);
+                    }
+                    spawnApple();
                 }
 
-                // Проверка столкновения с хвостом
+                // Столкновение с собой
                 for (let i = index + 1; i < snake.cells.length; i++) {
                     if (cell.x === snake.cells[i].x && cell.y === snake.cells[i].y) {
-                        resetGame();
+                        isGameOver = true;
+                        finalScoreEl.textContent = score;
+                        gameOverScreen.style.display = 'flex';
                     }
                 }
             });
         }
 
-        document.addEventListener('keydown', function (e) {
-            // Стрелка влево или A
-            if ((e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A' || e.key === 'ф' || e.key === 'Ф') && snake.dx === 0) {
-                snake.dx = -grid;
-                snake.dy = 0;
-            }
-            // Стрелка вверх или W
-            else if ((e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W' || e.key === 'ц' || e.key === 'Ц') && snake.dy === 0) {
-                snake.dy = -grid;
-                snake.dx = 0;
-            }
-            // Стрелка вправо или D
-            else if ((e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D' || e.key === 'в' || e.key === 'В') && snake.dx === 0) {
-                snake.dx = grid;
-                snake.dy = 0;
-            }
-            // Стрелка вниз или S
-            else if ((e.key === 'ArrowDown' || e.key === 's' || e.key === 'S' || e.key === 'ы' || e.key === 'Ы') && snake.dy === 0) {
-                snake.dy = grid;
-                snake.dx = 0;
-            }
-        });
+        // Управление свайпами на телефоне
+        let touchStartX = 0;
+        let touchStartY = 0;
 
-        requestAnimationFrame(loop);
-    </script>
-</body>
-</html>
+        document.addEventListener('touchstart', function (e) {
+            touchStartX = e.changedTouches[0].screenX;
+            touchStartY = e.changedTouches[0].screenY;
+        }, { passive: false });
+
+        document.addEventListener('touchend', function (e) {
+            let touchEndX = e.changedTouches[0].screenX;
+            let touchEndY = e.changedTouches[0].screenY;
+            handleSwipe(touchStartX, touchStartY, touchEndX, touchEndY);
+        }, { passive: false });
+
+        function handleSwipe(startX, startY, endX, endY) {
+            let dx = endX - startX;
+            let dy = endY - startY;
+
+            // Игнорируем случайные мелкие касания
+            if (Math.abs(dx) < 25 && Math.abs(dy) < 25) return;
+
+            if (Math.abs(dx) > Math.abs(dy)) {
+                // Горизонтальный свайп
+                setDirection(dx > 0 ? grid : -grid, 0);
+            } else {
+                // Вертикальный свайп
+                setDirection(0, dy > 0 ? grid : -grid);
+            }
+        }
+
+        // Поддержка клавиатуры на случай запуска на ПК
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'ф') setDirection(-grid, 0);
+            else if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'ц') setDirection(0, -grid);
+            else if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'в') setDirection(grid, 0);
