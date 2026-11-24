@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Змейка Mobile</title>
+    <title>BLACK RUSSIA 2D LITE</title>
     <style>
         * {
             box-sizing: border-box;
@@ -15,96 +15,242 @@
             padding: 0;
             width: 100%;
             height: 100%;
-            overflow: hidden; /* Отключаем прокрутку страницы */
-            touch-action: none; /* Отключаем системные жесты браузера */
-            background-color: #16213e;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+            touch-action: none;
+            background: #1a1a1a;
+            font-family: 'Segoe UI', Roboto, sans-serif;
+            color: white;
         }
         canvas {
             display: block;
             width: 100vw;
             height: 100vh;
         }
-        #ui {
+        /* Верхний HUD как в КРМП */
+        #hud-top {
             position: absolute;
-            top: 20px;
+            top: 12px;
+            left: 15px;
+            right: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            pointer-events: none;
+            z-index: 10;
+        }
+        .server-info {
+            background: rgba(0, 0, 0, 0.65);
+            padding: 6px 12px;
+            border-radius: 8px;
+            border-left: 4px solid #e63946;
+            font-size: 12px;
+        }
+        .server-title {
+            font-weight: 900;
+            letter-spacing: 1px;
+            color: #fff;
+        }
+        .server-title span { color: #e63946; }
+        .stats-box {
+            text-align: right;
+            background: rgba(0, 0, 0, 0.65);
+            padding: 8px 14px;
+            border-radius: 8px;
+        }
+        #money {
+            font-size: 20px;
+            font-weight: bold;
+            color: #4ecca3;
+            font-family: monospace;
+        }
+        #stars {
+            color: #ffb703;
+            font-size: 16px;
+            margin-top: 2px;
+            letter-spacing: 2px;
+        }
+        #mission-banner {
+            position: absolute;
+            top: 75px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(230, 57, 70, 0.9);
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: bold;
+            pointer-events: none;
+            text-align: center;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            white-space: nowrap;
+        }
+        /* Кнопки меню */
+        .menu-btns {
+            position: absolute;
+            top: 75px;
+            left: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            z-index: 15;
+        }
+        .action-btn {
+            background: rgba(20, 20, 30, 0.85);
+            border: 1px solid #e63946;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        /* Управление для телефона */
+        #controls {
+            position: absolute;
+            bottom: 20px;
             left: 20px;
             right: 20px;
             display: flex;
             justify-content: space-between;
-            align-items: center;
-            color: #ffffff;
-            font-size: 20px;
-            font-weight: bold;
+            align-items: flex-end;
             pointer-events: none;
-            text-shadow: 1px 1px 3px rgba(0,0,0,0.8);
-            z-index: 10;
+            z-index: 15;
         }
-        .score-val {
-            color: #4ecca3;
+        .ctrl-group {
+            display: flex;
+            gap: 15px;
+            pointer-events: auto;
         }
-        #game-over {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(22, 33, 62, 0.88);
-            display: none;
-            flex-direction: column;
+        .ctrl-btn {
+            width: 68px;
+            height: 68px;
+            background: rgba(255, 255, 255, 0.15);
+            border: 2px solid rgba(255, 255, 255, 0.4);
+            border-radius: 50%;
+            display: flex;
             align-items: center;
             justify-content: center;
-            color: #ffffff;
-            z-index: 20;
-            text-align: center;
-        }
-        #game-over h2 {
-            font-size: 32px;
-            margin: 0 0 10px 0;
-            color: #e94560;
-        }
-        #game-over p {
-            font-size: 22px;
-            margin: 0 0 25px 0;
-        }
-        button {
-            padding: 15px 35px;
-            font-size: 18px;
+            font-size: 24px;
             font-weight: bold;
-            background-color: #4ecca3;
-            color: #1a1a2e;
-            border: none;
-            border-radius: 30px;
-            cursor: pointer;
-            box-shadow: 0 4px 15px rgba(78, 204, 163, 0.4);
+            color: white;
+            backdrop-filter: blur(4px);
         }
-        button:active {
-            transform: scale(0.95);
+        .ctrl-btn:active, .ctrl-btn.active {
+            background: rgba(230, 57, 70, 0.7);
+            border-color: #fff;
+            transform: scale(0.92);
         }
-        #hint {
-            position: absolute;
-            bottom: 30px;
-            width: 100%;
-            text-align: center;
-            color: rgba(255, 255, 255, 0.5);
+        .pedal-btn {
+            width: 65px;
+            height: 85px;
+            border-radius: 14px;
             font-size: 14px;
+        }
+        .gas { border-color: #4ecca3; }
+        .brake { border-color: #e63946; }
+
+        /* Модальное окно Автосалона */
+        #shop-modal {
+            position: absolute;
+            inset: 0;
+            background: rgba(15, 15, 20, 0.95);
+            z-index: 30;
+            display: none;
+            flex-direction: column;
+            padding: 20px;
+        }
+        .shop-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #e63946;
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+        }
+        .car-list {
+            flex: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .car-card {
+            background: #252530;
+            padding: 15px;
+            border-radius: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 1px solid #3a3a4a;
+        }
+        .car-info h4 { margin: 0 0 5px 0; font-size: 16px; }
+        .car-info p { margin: 0; font-size: 12px; color: #aaa; }
+        .buy-btn {
+            background: #4ecca3;
+            color: #111;
+            border: none;
+            padding: 10px 16px;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 13px;
+        }
+        .buy-btn:disabled {
+            background: #555;
+            color: #888;
+        }
+        #speedometer {
+            position: absolute;
+            bottom: 120px;
+            right: 25px;
+            font-size: 18px;
+            font-weight: 900;
+            color: rgba(255,255,255,0.8);
+            text-shadow: 1px 1px 3px #000;
             pointer-events: none;
         }
     </style>
 </head>
 <body>
 
-    <div id="ui">
-        <div>Счёт: <span id="score" class="score-val">0</span></div>
-        <div>Рекорд: <span id="high-score" class="score-val">0</span></div>
+    <div id="hud-top">
+        <div class="server-info">
+            <div class="server-title">BLACK <span>RUSSIA</span> 2D</div>
+            <div>Сервер: RED | Онлайн: 1000</div>
+            <div id="car-name" style="color:#4ecca3; margin-top:2px;">ВАЗ 2107</div>
+        </div>
+        <div class="stats-box">
+            <div id="money">5 000 ₽</div>
+            <div id="stars">☆☆☆☆☆</div>
+        </div>
     </div>
 
-    <div id="hint">Свайпайте в любую сторону для управления</div>
+    <div id="mission-banner">Едьте на зелёную метку (Работа)</div>
 
-    <div id="game-over">
-        <h2>Игра окончена!</h2>
-        <p>Ваш счёт: <span id="final-score" class="score-val">0</span></p>
-        <button onclick="restartGame()">Играть снова</button>
+    <div class="menu-btns">
+        <button class="action-btn" onclick="openShop()">🚗 Автосалон</button>
+        <button class="action-btn" onclick="bribePolice()">💸 Снять розыск (2000₽)</button>
+    </div>
+
+    <div id="speedometer"><span id="speed-val">0</span> км/ч</div>
+
+    <div id="controls">
+        <div class="ctrl-group">
+            <div class="ctrl-btn" id="btn-left">◀</div>
+            <div class="ctrl-btn" id="btn-right">▶</div>
+        </div>
+        <div class="ctrl-group">
+            <div class="ctrl-btn pedal-btn brake" id="btn-down">ТОРМОЗ</div>
+            <div class="ctrl-btn pedal-btn gas" id="btn-up">ГАЗ</div>
+        </div>
+    </div>
+
+    <!-- Автосалон -->
+    <div id="shop-modal">
+        <div class="shop-header">
+            <h2 style="margin:0;">АВТОСАЛОН</h2>
+            <button class="action-btn" onclick="closeShop()">Закрыть ✖</button>
+        </div>
+        <div class="car-list" id="car-list"></div>
     </div>
 
     <canvas id="game"></canvas>
@@ -112,186 +258,62 @@
     <script>
         const canvas = document.getElementById('game');
         const ctx = canvas.getContext('2d');
-        const scoreEl = document.getElementById('score');
-        const highScoreEl = document.getElementById('high-score');
-        const gameOverScreen = document.getElementById('game-over');
-        const finalScoreEl = document.getElementById('final-score');
-        const hintEl = document.getElementById('hint');
 
-        const grid = 20;
-        let cols, rows;
-        let count = 0;
-        let score = 0;
-        let highScore = localStorage.getItem('snakeHighScore') || 0;
-        let isGameOver = false;
-        let canChangeDirection = true; // Защита от быстрого двойного свайпа в себя
+        // Игровые данные
+        let money = parseInt(localStorage.getItem('br_money')) || 5000;
+        let currentCarId = parseInt(localStorage.getItem('br_car')) || 0;
+        let ownedCars = JSON.parse(localStorage.getItem('br_owned')) ||;
+        let wantedLevel = 0;
 
-        highScoreEl.textContent = highScore;
+        const carsCatalog = [
+            { id: 0, name: "ВАЗ 2107 (Классика)", price: 0, maxSpeed: 6, accel: 0.2, turn: 0.055, color: "#d90429" },
+            { id: 1, name: "Lada Priora (Опер)", price: 15000, maxSpeed: 8, accel: 0.28, turn: 0.065, color: "#111111" },
+            { id: 2, name: "BMW M5 F90", price: 50000, maxSpeed: 11, accel: 0.4, turn: 0.075, color: "#0077b6" },
+            { id: 3, name: "Mercedes G63 AMG", price: 120000, maxSpeed: 10.5, accel: 0.38, turn: 0.06, color: "#2b2d42" },
+            { id: 4, name: "Lamborghini Huracan", price: 300000, maxSpeed: 14, accel: 0.55, turn: 0.085, color: "#ffb703" }
+        ];
 
-        let snake = {
-            x: 0,
-            y: 0,
-            dx: grid,
-            dy: 0,
-            cells: [],
-            maxCells: 4
+        // Размер карты города
+        const WORLD_SIZE = 2400;
+        const BLOCK_SIZE = 400;
+
+        // Игрок
+        let player = {
+            x: 1200,
+            y: 1200,
+            angle: -Math.PI / 2,
+            speed: 0,
+            width: 24,
+            height: 44
         };
 
-        let apple = { x: 0, y: 0 };
+        // Управление
+        const keys = { left: false, right: false, up: false, down: false };
 
-        function resizeCanvas() {
+        // Метка работы
+        let jobMarker = { x: 1400, y: 1000, reward: 2500 };
+
+        // Полиция и пешеходы
+        let cops = [];
+        let peds = [];
+        let skidMarks = [];
+
+        function resize() {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
-            cols = Math.floor(canvas.width / grid);
-            rows = Math.floor(canvas.height / grid);
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        function saveProgress() {
+            localStorage.setItem('br_money', money);
+            localStorage.setItem('br_car', currentCarId);
+            localStorage.setItem('br_owned', JSON.stringify(ownedCars));
+            updateHUD();
         }
 
-        function spawnApple() {
-            apple.x = Math.floor(Math.random() * cols) * grid;
-            apple.y = Math.floor(Math.random() * rows) * grid;
-        }
-
-        function initGame() {
-            resizeCanvas();
-            snake.x = Math.floor(cols / 2) * grid;
-            snake.y = Math.floor(rows / 2) * grid;
-            snake.cells = [];
-            snake.maxCells = 4;
-            snake.dx = grid;
-            snake.dy = 0;
-            score = 0;
-            scoreEl.textContent = score;
-            isGameOver = false;
-            gameOverScreen.style.display = 'none';
-            spawnApple();
-        }
-
-        function restartGame() {
-            initGame();
-            requestAnimationFrame(loop);
-        }
-
-        function setDirection(newDx, newDy) {
-            if (!canChangeDirection || isGameOver) return;
-            // Запрещаем разворот на 180 градусов
-            if (newDx !== 0 && snake.dx === 0) {
-                snake.dx = newDx;
-                snake.dy = 0;
-                canChangeDirection = false;
-                hintEl.style.display = 'none';
-            } else if (newDy !== 0 && snake.dy === 0) {
-                snake.dy = newDy;
-                snake.dx = 0;
-                canChangeDirection = false;
-                hintEl.style.display = 'none';
-            }
-        }
-
-        function loop() {
-            if (isGameOver) return;
-            requestAnimationFrame(loop);
-
-            // Скорость игры (чем меньше цифра, тем быстрее змейка)
-            if (++count < 7) return;
-            count = 0;
-            canChangeDirection = true;
-
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-            // Рисуем лёгкую сетку на фоне
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.03)';
-            ctx.lineWidth = 1;
-            for (let x = 0; x < canvas.width; x += grid) {
-                ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
-            }
-            for (let y = 0; y < canvas.height; y += grid) {
-                ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
-            }
-
-            snake.x += snake.dx;
-            snake.y += snake.dy;
-
-            // Проход сквозь края экрана
-            if (snake.x < 0) snake.x = (cols - 1) * grid;
-            else if (snake.x >= cols * grid) snake.x = 0;
-
-            if (snake.y < 0) snake.y = (rows - 1) * grid;
-            else if (snake.y >= rows * grid) snake.y = 0;
-
-            snake.cells.unshift({ x: snake.x, y: snake.y });
-            if (snake.cells.length > snake.maxCells) {
-                snake.cells.pop();
-            }
-
-            // Рисуем яблоко (круглое)
-            ctx.fillStyle = '#e94560';
-            ctx.beginPath();
-            ctx.arc(apple.x + grid / 2, apple.y + grid / 2, grid / 2 - 2, 0, Math.PI * 2);
-            ctx.fill();
-
-            // Рисуем змейку
-            snake.cells.forEach(function (cell, index) {
-                // Голова чуть ярче тела
-                ctx.fillStyle = index === 0 ? '#6effcf' : '#4ecca3';
-                ctx.fillRect(cell.x + 1, cell.y + 1, grid - 2, grid - 2);
-
-                // Поедание яблока
-                if (cell.x === apple.x && cell.y === apple.y) {
-                    snake.maxCells++;
-                    score += 10;
-                    scoreEl.textContent = score;
-                    if (score > highScore) {
-                        highScore = score;
-                        highScoreEl.textContent = highScore;
-                        localStorage.setItem('snakeHighScore', highScore);
-                    }
-                    spawnApple();
-                }
-
-                // Столкновение с собой
-                for (let i = index + 1; i < snake.cells.length; i++) {
-                    if (cell.x === snake.cells[i].x && cell.y === snake.cells[i].y) {
-                        isGameOver = true;
-                        finalScoreEl.textContent = score;
-                        gameOverScreen.style.display = 'flex';
-                    }
-                }
-            });
-        }
-
-        // Управление свайпами на телефоне
-        let touchStartX = 0;
-        let touchStartY = 0;
-
-        document.addEventListener('touchstart', function (e) {
-            touchStartX = e.changedTouches[0].screenX;
-            touchStartY = e.changedTouches[0].screenY;
-        }, { passive: false });
-
-        document.addEventListener('touchend', function (e) {
-            let touchEndX = e.changedTouches[0].screenX;
-            let touchEndY = e.changedTouches[0].screenY;
-            handleSwipe(touchStartX, touchStartY, touchEndX, touchEndY);
-        }, { passive: false });
-
-        function handleSwipe(startX, startY, endX, endY) {
-            let dx = endX - startX;
-            let dy = endY - startY;
-
-            // Игнорируем случайные мелкие касания
-            if (Math.abs(dx) < 25 && Math.abs(dy) < 25) return;
-
-            if (Math.abs(dx) > Math.abs(dy)) {
-                // Горизонтальный свайп
-                setDirection(dx > 0 ? grid : -grid, 0);
-            } else {
-                // Вертикальный свайп
-                setDirection(0, dy > 0 ? grid : -grid);
-            }
-        }
-
-        // Поддержка клавиатуры на случай запуска на ПК
-        document.addEventListener('keydown', function (e) {
-            if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'ф') setDirection(-grid, 0);
-            else if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'ц') setDirection(0, -grid);
-            else if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'в') setDirection(grid, 0);
+        function updateHUD() {
+            document.getElementById('money').textContent = money.toLocaleString('ru-RU') + ' ₽';
+            document.getElementById('car-name').textContent = carsCatalog[currentCarId].name;
+            let starsStr = '';
+            for (let i = 0; i < 5; i++) starsStr += i < wantedLevel ? '★' : '☆';
